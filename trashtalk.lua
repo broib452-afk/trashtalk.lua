@@ -1,4 +1,4 @@
--- Trash talk для Fatality CS:GO
+-- Trash talk для Gamesense (Skeet)
 -- Фразы: обычные, хедшот, ножевое, ответ на смерть
 
 local phrases = {
@@ -31,28 +31,29 @@ local last_say = 0
 local COOLDOWN = 1.0 -- секунд между сообщениями
 
 local function pick(t)
-    return t[math.random(1, #t)]
+    return t[client.random_int(1, #t)]
 end
 
 local function say(text)
-    local now = os.clock()
+    -- В Gamesense используем глобальный синтаксис client.timestamp() вместо os.clock()
+    local now = client.timestamp() / 1000  -- переводим миллисекунды в секунды
     if now - last_say < COOLDOWN then return end
     last_say = now
-    game.engine:client_cmd("say " .. text)
+    
+    -- В Gamesense команда отправляется через client.exec
+    client.exec("say " .. text)
 end
 
-math.randomseed(os.time())
-
 local function on_player_death(event)
-    local me = game.engine:get_local_player()
-    local attacker = game.engine:get_player_for_user_id(event:get_int("attacker", 0))
-    local victim = game.engine:get_player_for_user_id(event:get_int("userid", 0))
+    local me = client.my_playerindex()
+    local attacker = client.userid_to_entindex(event.attacker)
+    local victim = client.userid_to_entindex(event.userid)
 
     if attacker == me and victim ~= me then
-        local weapon = event:get_string("weapon", "")
-        if weapon:find("knife") then
+        local weapon = event.weapon
+        if weapon and weapon:find("knife") then
             say(pick(phrases.knife))
-        elseif event:get_bool("headshot", false) then
+        elseif event.headshot then
             say(pick(phrases.headshot))
         else
             say(pick(phrases.kill))
@@ -62,4 +63,6 @@ local function on_player_death(event)
     end
 end
 
-events.player_death:add(on_player_death)
+-- Регистрация события смерти в API Gamesense
+client.set_event_callback("player_death", on_player_death)
+
